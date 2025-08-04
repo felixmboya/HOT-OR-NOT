@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HotOrNot AI - Face Analyzer</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .fade-in {
+      animation: fadeIn 1s ease-in forwards;
+    }
+
+    .scale-up {
+      animation: scaleUp 0.7s ease-out forwards;
+    }
+
+    .score-bar {
+      width: 0;
+      height: 12px;
+      border-radius: 9999px;
+      transition: width 1s ease-in-out, background-color 1s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes scaleUp {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-purple-600 to-pink-500 min-h-screen flex flex-col items-center justify-center text-white font-sans">
+  <header class="text-center mb-10 fade-in">
+    <h1 class="text-4xl font-bold">🔥 HotOrNot AI 🔥</h1>
+    <p class="text-lg mt-2">Upload your photo or take a selfie. Let our AI judge your vibes.</p>
+  </header>
+
+  <main class="w-full max-w-md bg-white text-black rounded-2xl shadow-2xl p-6 scale-up">
+    <form id="analyzeForm" class="flex flex-col items-center">
+      <label class="mb-4 w-full">
+        <input type="file" accept="image/*" id="imageInput" class="w-full border p-2 rounded mb-2" capture="environment" required />
+        <button type="button" onclick="openCamera()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full">Take a Selfie</button>
+        <video id="cameraStream" autoplay class="hidden mt-4 w-full rounded"></video>
+        <canvas id="cameraCanvas" class="hidden"></canvas>
+      </label>
+      <button type="submit" class="bg-purple-600 text-white font-semibold px-6 py-2 rounded hover:bg-purple-700 transition">Analyze My Face</button>
+    </form>
+
+    <div id="results" class="hidden mt-6 text-center fade-in">
+      <img id="previewImage" src="" alt="Uploaded" class="w-40 h-40 object-cover rounded-full mx-auto mb-4 shadow-md">
+      <p class="text-xl font-bold mb-4">Your AI Vibe Check Results:</p>
+      <ul class="space-y-4">
+        <li>
+          🔥 Attractiveness: <span id="attractiveness">0</span>%
+          <div class="w-full bg-gray-200 rounded-full mt-1">
+            <div id="barAttractiveness" class="score-bar"></div>
+          </div>
+        </li>
+        <li>
+          💰 Rich Face: <span id="richness">0</span>%
+          <div class="w-full bg-gray-200 rounded-full mt-1">
+            <div id="barRichness" class="score-bar"></div>
+          </div>
+        </li>
+        <li>
+          🧠 Genius Level: <span id="genius">0</span>%
+          <div class="w-full bg-gray-200 rounded-full mt-1">
+            <div id="barGenius" class="score-bar"></div>
+          </div>
+        </li>
+        <li>
+          😈 Evil Vibe: <span id="evil">0</span>%
+          <div class="w-full bg-gray-200 rounded-full mt-1">
+            <div id="barEvil" class="score-bar"></div>
+          </div>
+        </li>
+      </ul>
+      <div class="mt-6">
+        <button onclick="shareResults()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Share</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="mt-10 text-sm text-center fade-in">
+    <p>&copy; 2025 HotOrNot.com – For entertainment only. We don't store your images.</p>
+  </footer>
+
+  <script>
+    const form = document.getElementById("analyzeForm");
+    const results = document.getElementById("results");
+    const previewImage = document.getElementById("previewImage");
+    const cameraStream = document.getElementById("cameraStream");
+    const cameraCanvas = document.getElementById("cameraCanvas");
+    const imageInput = document.getElementById("imageInput");
+
+    function getRandomScore() {
+      return Math.floor(Math.random() * 51) + 50; // 50-100
+    }
+
+    function animateCounter(id, target, barId) {
+      let count = 0;
+      const step = () => {
+        if (count <= target) {
+          document.getElementById(id).innerText = count;
+          const percent = count;
+          const hue = (percent / 100) * 120; // red to green
+          const color = `hsl(${hue}, 100%, 50%)`;
+          const bar = document.getElementById(barId);
+          bar.style.width = percent + "%";
+          bar.style.backgroundColor = color;
+          count++;
+          requestAnimationFrame(step);
+        }
+      };
+      step();
+    }
+
+    function openCamera() {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then((stream) => {
+          cameraStream.srcObject = stream;
+          cameraStream.classList.remove("hidden");
+          cameraCanvas.classList.add("hidden");
+
+          setTimeout(() => {
+            const context = cameraCanvas.getContext('2d');
+            cameraCanvas.width = cameraStream.videoWidth;
+            cameraCanvas.height = cameraStream.videoHeight;
+            context.drawImage(cameraStream, 0, 0);
+            cameraCanvas.toBlob(blob => {
+              const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
+              const dataTransfer = new DataTransfer();
+              dataTransfer.items.add(file);
+              imageInput.files = dataTransfer.files;
+              cameraStream.srcObject.getTracks().forEach(track => track.stop());
+              cameraStream.classList.add("hidden");
+            });
+          }, 3000);
+        })
+        .catch((err) => {
+          alert("Failed to access camera: " + err);
+        });
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const file = imageInput.files[0];
+      if (!file) return alert("Please upload an image or take a selfie.");
+
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        previewImage.src = event.target.result;
+        const scores = {
+          attractiveness: getRandomScore(),
+          richness: getRandomScore(),
+          genius: getRandomScore(),
+          evil: getRandomScore()
+        };
+
+        animateCounter("attractiveness", scores.attractiveness, "barAttractiveness");
+        setTimeout(() => animateCounter("richness", scores.richness, "barRichness"), 700);
+        setTimeout(() => animateCounter("genius", scores.genius, "barGenius"), 1400);
+        setTimeout(() => animateCounter("evil", scores.evil, "barEvil"), 2100);
+
+        results.classList.remove("hidden");
+        results.classList.add("fade-in");
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function shareResults() {
+      alert("Share this site with your friends and see who looks richest or hottest! 🔥");
+    }
+  </script>
+</body>
+</html>
